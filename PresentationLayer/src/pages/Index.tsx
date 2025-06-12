@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,20 +7,51 @@ import ClientDashboard from '@/components/ClientDashboard';
 import WorkerDashboard from '@/components/WorkerDashboard';
 import OwnerDashboard from '@/components/OwnerDashboard';
 import { User, Calendar, TrendingUp } from 'lucide-react';
+import { auth } from '@/lib/auth';
+import { toast } from '@/components/ui/use-toast';
 
 export type UserRole = 'client' | 'worker' | 'owner' | null;
 
 const Index = () => {
   const [currentUser, setCurrentUser] = useState<{role: UserRole, name: string} | null>(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogin = (role: UserRole, name: string) => {
+  useEffect(() => {
+    const verifyToken = async () => {
+      try {
+        const response = await auth.verifyToken();
+        setCurrentUser({
+          role: response.user.role as UserRole,
+          name: response.user.name
+        });
+      } catch (error) {
+        // Token is invalid or missing, user needs to log in
+        auth.logout();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    verifyToken();
+  }, []);
+
+  const handleLogin = async (role: UserRole, name: string) => {
     setCurrentUser({ role, name });
     setShowAuth(false);
+    toast({
+      title: "Успешен вход",
+      description: `Добре дошли, ${name}!`,
+    });
   };
 
   const handleLogout = () => {
+    auth.logout();
     setCurrentUser(null);
+    toast({
+      title: "Излизане",
+      description: "Успешно излязохте от системата",
+    });
   };
 
   // Demo data for statistics
@@ -30,6 +60,17 @@ const Index = () => {
     
     
   ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Зареждане...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (currentUser) {
     switch (currentUser.role) {
