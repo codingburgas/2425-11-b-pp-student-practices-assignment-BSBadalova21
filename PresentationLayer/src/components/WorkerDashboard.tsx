@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,11 +13,30 @@ interface WorkerDashboardProps {
 
 const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
   
-  const pendingRequests = [
+  const [pendingRequests, setPendingRequests] = useState([
     { id: 1, client: 'Мария Иванова', service: 'Гел лак с декорации', estimatedTime: 85, time: '14:00' },
     { id: 2, client: 'Анна Петрова', service: 'Френски маникюр', estimatedTime: 75, time: '15:30' },
     { id: 3, client: 'София Димитрова', service: 'Класически лак', estimatedTime: 60, time: '16:00' },
+  ]);
+
+  const fullSchedule = [
+    { date: '2024-03-20', slots: [
+      { id: 1, time: '09:00', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'completed', actualTime: 90 },
+      { id: 2, time: '11:00', client: 'Ива Стоянова', service: 'Гел лак', status: 'completed', actualTime: 75 },
+      { id: 3, time: '14:00', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'in-progress', actualTime: null },
+    ]},
+    { date: '2024-03-21', slots: [
+      { id: 4, time: '10:00', client: 'Анна Петрова', service: 'Френски маникюр', status: 'scheduled', actualTime: null },
+      { id: 5, time: '13:00', client: 'София Димитрова', service: 'Класически лак', status: 'scheduled', actualTime: null },
+      { id: 6, time: '15:00', client: '', service: '', status: 'free', actualTime: null },
+    ]},
+    { date: '2024-03-22', slots: [
+      { id: 7, time: '09:30', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'scheduled', actualTime: null },
+      { id: 8, time: '11:30', client: '', service: '', status: 'free', actualTime: null },
+      { id: 9, time: '14:30', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'scheduled', actualTime: null },
+    ]},
   ];
 
   const todaySchedule = [
@@ -31,10 +49,12 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
   ];
 
   const handleAccept = (requestId: number) => {
+    setPendingRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
     alert(`✅ Заявката е приета!`);
   };
 
   const handleReject = (requestId: number) => {
+    setPendingRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
     alert(`❌ Заявката е отказана!`);
   };
 
@@ -47,6 +67,7 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
       case 'free': return 'bg-green-100 text-green-800 border-green-200';
       case 'in-progress': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'scheduled': return 'bg-purple-100 text-purple-800 border-purple-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -56,6 +77,7 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
       case 'free': return '🟢';
       case 'in-progress': return '🟡';
       case 'completed': return '🔵';
+      case 'scheduled': return '🟣';
       default: return '⚪';
     }
   };
@@ -158,61 +180,117 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
               </CardContent>
             </Card>
 
-            {/* Daily Schedule */}
+            {/* Schedule Section */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-gray-800">
                   <Calendar className="w-6 h-6 text-purple-600" />
-                  График за {new Date().toLocaleDateString('bg-BG')}
+                  {showFullSchedule ? 'Цял график' : `График за ${new Date().toLocaleDateString('bg-BG')}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-3">
-                  {todaySchedule.map((slot) => (
-                    <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{getStatusIcon(slot.status)}</span>
-                          <div>
-                            <div className="font-semibold">{slot.time}</div>
-                            {slot.client && (
-                              <div className="text-sm">
-                                <div>{slot.client}</div>
-                                <div className="text-gray-600">{slot.service}</div>
+                {showFullSchedule ? (
+                  <div className="space-y-6">
+                    {fullSchedule.map((day) => (
+                      <div key={day.date} className="space-y-3">
+                        <h3 className="font-semibold text-gray-800 mb-2">
+                          {new Date(day.date).toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </h3>
+                        {day.slots.map((slot) => (
+                          <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl">{getStatusIcon(slot.status)}</span>
+                                <div>
+                                  <div className="font-semibold">{slot.time}</div>
+                                  {slot.client && (
+                                    <div className="text-sm">
+                                      <div>{slot.client}</div>
+                                      <div className="text-gray-600">{slot.service}</div>
+                                    </div>
+                                  )}
+                                  {!slot.client && (
+                                    <div className="text-sm text-gray-600">Свободен час</div>
+                                  )}
+                                </div>
                               </div>
-                            )}
-                            {!slot.client && (
-                              <div className="text-sm text-gray-600">Свободен час</div>
-                            )}
+                              
+                              {slot.status === 'in-progress' && (
+                                <div className="flex items-center gap-2">
+                                  <Input 
+                                    type="number" 
+                                    placeholder="Време (мин)" 
+                                    className="w-24 h-8 text-sm"
+                                  />
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => handleComplete(slot.id, 85)}
+                                    className="bg-green-600 hover:bg-green-700 text-white h-8"
+                                  >
+                                    Завърши
+                                  </Button>
+                                </div>
+                              )}
+                              
+                              {slot.status === 'completed' && slot.actualTime && (
+                                <div className="text-sm text-gray-600">
+                                  Завършено за {slot.actualTime} мин
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        
-                        {slot.status === 'in-progress' && (
-                          <div className="flex items-center gap-2">
-                            <Input 
-                              type="number" 
-                              placeholder="Време (мин)" 
-                              className="w-24 h-8 text-sm"
-                            />
-                            <Button 
-                              size="sm"
-                              onClick={() => handleComplete(slot.id, 85)}
-                              className="bg-green-600 hover:bg-green-700 text-white h-8"
-                            >
-                              Завърши
-                            </Button>
-                          </div>
-                        )}
-                        
-                        {slot.status === 'completed' && slot.actualTime && (
-                          <div className="text-sm text-gray-600">
-                            Завършено за {slot.actualTime} мин
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {todaySchedule.map((slot) => (
+                      <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{getStatusIcon(slot.status)}</span>
+                            <div>
+                              <div className="font-semibold">{slot.time}</div>
+                              {slot.client && (
+                                <div className="text-sm">
+                                  <div>{slot.client}</div>
+                                  <div className="text-gray-600">{slot.service}</div>
+                                </div>
+                              )}
+                              {!slot.client && (
+                                <div className="text-sm text-gray-600">Свободен час</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {slot.status === 'in-progress' && (
+                            <div className="flex items-center gap-2">
+                              <Input 
+                                type="number" 
+                                placeholder="Време (мин)" 
+                                className="w-24 h-8 text-sm"
+                              />
+                              <Button 
+                                size="sm"
+                                onClick={() => handleComplete(slot.id, 85)}
+                                className="bg-green-600 hover:bg-green-700 text-white h-8"
+                              >
+                                Завърши
+                              </Button>
+                            </div>
+                          )}
+                          
+                          {slot.status === 'completed' && slot.actualTime && (
+                            <div className="text-sm text-gray-600">
+                              Завършено за {slot.actualTime} мин
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -228,10 +306,13 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                
-                <Button variant="outline" className="w-full border-purple-200 text-purple-600 hover:bg-purple-50">
+                <Button 
+                  variant="outline" 
+                  className="w-full border-purple-200 text-purple-600 hover:bg-purple-50"
+                  onClick={() => setShowFullSchedule(!showFullSchedule)}
+                >
                   <Calendar className="w-4 h-4 mr-2" />
-                  Виж целия график
+                  {showFullSchedule ? 'Виж днешния график' : 'Виж целия график'}
                 </Button>
               </CardContent>
             </Card>
