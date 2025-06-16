@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,8 @@ import {
   LogOut, 
   Download, 
   Plus,
-  Settings
+  Settings,
+  X
 } from 'lucide-react';
 
 interface OwnerDashboardProps {
@@ -24,8 +24,22 @@ interface OwnerDashboardProps {
   onLogout: () => void;
 }
 
+interface StaffMember {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+  appointments: number;
+  rating: number;
+}
+
 const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    name: '',
+    email: '',
+  });
 
   // Demo data
   const stats = [
@@ -45,6 +59,31 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
     { day: 'Нед', appointments: 12, revenue: 950 },
   ];
 
+  const monthlyData = [
+    { day: '1', appointments: 45, revenue: 3600 },
+    { day: '5', appointments: 52, revenue: 4200 },
+    { day: '10', appointments: 48, revenue: 3800 },
+    { day: '15', appointments: 55, revenue: 4400 },
+    { day: '20', appointments: 60, revenue: 4800 },
+    { day: '25', appointments: 58, revenue: 4600 },
+    { day: '30', appointments: 50, revenue: 4000 },
+  ];
+
+  const yearlyData = [
+    { month: 'Яну', appointments: 450, revenue: 36000 },
+    { month: 'Фев', appointments: 480, revenue: 38400 },
+    { month: 'Мар', appointments: 520, revenue: 41600 },
+    { month: 'Апр', appointments: 490, revenue: 39200 },
+    { month: 'Май', appointments: 550, revenue: 44000 },
+    { month: 'Юни', appointments: 580, revenue: 46400 },
+    { month: 'Юли', appointments: 600, revenue: 48000 },
+    { month: 'Авг', appointments: 590, revenue: 47200 },
+    { month: 'Сеп', appointments: 540, revenue: 43200 },
+    { month: 'Окт', appointments: 510, revenue: 40800 },
+    { month: 'Ное', appointments: 480, revenue: 38400 },
+    { month: 'Дек', appointments: 520, revenue: 41600 },
+  ];
+
   const serviceData = [
     { name: 'Гел лак', value: 35, color: '#FF6B9D' },
     { name: 'Френски', value: 25, color: '#9B59B6' },
@@ -53,11 +92,11 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
     { name: 'Други', value: 5, color: '#95A5A6' },
   ];
 
-  const staff = [
-    { id: 1, name: 'Елена Петрова', status: 'Активна', appointments: 8, rating: 4.9 },
-    { id: 2, name: 'Мария Стоянова', status: 'Активна', appointments: 6, rating: 4.8 },
-    { id: 3, name: 'София Димитрова', status: 'Почивка', appointments: 0, rating: 4.7 },
-  ];
+  const [staff, setStaff] = useState<StaffMember[]>([
+    { id: 1, name: 'Елена Петрова', email: 'elena@example.com', status: 'Активна', appointments: 8, rating: 4.9 },
+    { id: 2, name: 'Мария Стоянова', email: 'maria@example.com', status: 'Активна', appointments: 6, rating: 4.8 },
+    { id: 3, name: 'София Димитрова', email: 'sofia@example.com', status: 'Почивка', appointments: 0, rating: 4.7 },
+  ]);
 
   const recentBookings = [
     { id: 1, client: 'Анна Иванова', service: 'Гел лак', time: '14:30', worker: 'Елена Петрова', status: 'confirmed' },
@@ -74,8 +113,51 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
     }
   };
 
+  const getChartData = () => {
+    switch (selectedPeriod) {
+      case 'week':
+        return weeklyData;
+      case 'month':
+        return monthlyData;
+      case 'year':
+        return yearlyData;
+      default:
+        return weeklyData;
+    }
+  };
+
+  const getXAxisDataKey = () => {
+    switch (selectedPeriod) {
+      case 'week':
+        return 'day';
+      case 'month':
+        return 'day';
+      case 'year':
+        return 'month';
+      default:
+        return 'day';
+    }
+  };
+
   const exportData = () => {
     alert('📄 Данните се изтеглят като CSV файл...');
+  };
+
+  const handleAddEmployee = () => {
+    if (newEmployee.name.trim() && newEmployee.email.trim()) {
+      const newStaffMember: StaffMember = {
+        id: staff.length + 1,
+        name: newEmployee.name,
+        email: newEmployee.email,
+        status: 'Активна',
+        appointments: 0,
+        rating: 5.0
+      };
+      
+      setStaff([...staff, newStaffMember]);
+      setNewEmployee({ name: '', email: '' });
+      setShowAddEmployeeModal(false);
+    }
   };
 
   return (
@@ -147,7 +229,9 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-gray-800">
                   <TrendingUp className="w-6 h-6 text-blue-600" />
-                  Седмична аналитика
+                  {selectedPeriod === 'week' && 'Седмична аналитика'}
+                  {selectedPeriod === 'month' && 'Месечна аналитика'}
+                  {selectedPeriod === 'year' && 'Годишна аналитика'}
                 </CardTitle>
                 <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                   <SelectTrigger className="w-32">
@@ -163,9 +247,9 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
               <CardContent>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyData}>
+                    <BarChart data={getChartData()}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" />
+                      <XAxis dataKey={getXAxisDataKey()} />
                       <YAxis />
                       <Tooltip />
                       <Bar dataKey="appointments" fill="#3B82F6" name="Записи" />
@@ -183,7 +267,10 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
                   <Users className="w-6 h-6 text-blue-600" />
                   Управление на персонал
                 </CardTitle>
-                <Button className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white">
+                <Button 
+                  className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
+                  onClick={() => setShowAddEmployeeModal(true)}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Добави служител
                 </Button>
@@ -199,6 +286,7 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
                         <div>
                           <h3 className="font-semibold text-gray-900">{member.name}</h3>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span>{member.email}</span>
                             <span>Записи днес: {member.appointments}</span>
                             <span>Рейтинг: ⭐ {member.rating}</span>
                           </div>
@@ -318,6 +406,51 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
           </div>
         </div>
       </div>
+
+      {/* Add Employee Modal */}
+      {showAddEmployeeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl">Добави нов служител</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAddEmployeeModal(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Име</Label>
+                <Input
+                  id="name"
+                  value={newEmployee.name}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                  placeholder="Въведете пълно име"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Имейл</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newEmployee.email}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                  placeholder="Въведете имейл адрес"
+                />
+              </div>
+              <Button
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
+                onClick={handleAddEmployee}
+              >
+                Добави
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
