@@ -40,6 +40,7 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
     name: '',
     email: '',
   });
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   // Demo data
   const stats = [
@@ -160,6 +161,35 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
     }
   };
 
+  // Add fullSchedule and getStatusIcon
+  const fullSchedule = [
+    { date: '2024-03-20', slots: [
+      { id: 1, time: '09:00', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'completed', actualTime: 90 },
+      { id: 2, time: '11:00', client: 'Ива Стоянова', service: 'Гел лак', status: 'completed', actualTime: 75 },
+      { id: 3, time: '14:00', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'in-progress', actualTime: null },
+    ]},
+    { date: '2024-03-21', slots: [
+      { id: 4, time: '10:00', client: 'Анна Петрова', service: 'Френски маникюр', status: 'scheduled', actualTime: null },
+      { id: 5, time: '13:00', client: 'София Димитрова', service: 'Класически лак', status: 'scheduled', actualTime: null },
+      { id: 6, time: '15:00', client: '', service: '', status: 'free', actualTime: null },
+    ]},
+    { date: '2024-03-22', slots: [
+      { id: 7, time: '09:30', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'scheduled', actualTime: null },
+      { id: 8, time: '11:30', client: '', service: '', status: 'free', actualTime: null },
+      { id: 9, time: '14:30', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'scheduled', actualTime: null },
+    ]},
+  ];
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'free': return '🟢';
+      case 'in-progress': return '🟡';
+      case 'completed': return '🔵';
+      case 'scheduled': return '🟣';
+      default: return '⚪';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
       {/* Header */}
@@ -197,25 +227,16 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
+        {/* Stats Grid with Export Button */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                      <Badge variant="outline" className="text-green-600 border-green-200">
-                        {stat.change}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-xl bg-opacity-10 ${stat.color.replace('text-', 'bg-')}`}>
-                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                  </div>
-                </div>
+          {stats.map((stat) => (
+            <Card key={stat.title} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className={`flex items-center gap-2 ${stat.color}`}>{React.createElement(stat.icon, { className: 'w-6 h-6' })} {stat.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
+                <div className="text-sm text-gray-500">{stat.change}</div>
               </CardContent>
             </Card>
           ))}
@@ -307,8 +328,22 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
             </Card>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar with Calendar Button */}
           <div className="space-y-6">
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  Салон Календар
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white" onClick={() => setShowCalendarModal(true)}>
+                  Отвори календара
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Service Distribution */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
@@ -380,29 +415,6 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
                 ))}
               </CardContent>
             </Card>
-
-            {/* Quick Actions */}
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-gray-800">
-                  <Download className="w-5 h-5 text-blue-600" />
-                  Експорт на данни
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  onClick={exportData}
-                  className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Изтегли CSV
-                </Button>
-                <Button variant="outline" className="w-full border-blue-200 text-blue-600 hover:bg-blue-50">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Календар на салона
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
@@ -447,6 +459,56 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
               >
                 Добави
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Salon Calendar Modal */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-3xl mx-4">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xl">Салон Календар</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowCalendarModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Reuse fullSchedule rendering from WorkerDashboard or similar */}
+              {fullSchedule.map((day) => (
+                <div key={day.date} className="space-y-3">
+                  <h3 className="font-semibold text-gray-800 mb-2">
+                    {new Date(day.date).toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </h3>
+                  {day.slots.map((slot) => (
+                    <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{getStatusIcon(slot.status)}</span>
+                          <div>
+                            <div className="font-semibold">{slot.time}</div>
+                            {slot.client && (
+                              <div className="text-sm">
+                                <div>{slot.client}</div>
+                                <div className="text-gray-600">{slot.service}</div>
+                              </div>
+                            )}
+                            {!slot.client && (
+                              <div className="text-sm text-gray-600">Свободен час</div>
+                            )}
+                          </div>
+                        </div>
+                        {slot.status === 'completed' && slot.actualTime && (
+                          <div className="text-sm text-gray-600">
+                            Завършено за {slot.actualTime} мин
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
