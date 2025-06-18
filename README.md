@@ -19,4 +19,4 @@ mini nail salon management system with intelligent functionality. Very original 
 ## 👨🏻‍💻 Team Members
 | **Name** | **Role** | **Grade** |
 | :---:   | :---: | :---: |
-| Bilyana Badalova | Scrum Trainer  | 🟥 10B |
+| Bilyana Badalova | Scrum Trainer  | 🟥 11B |
