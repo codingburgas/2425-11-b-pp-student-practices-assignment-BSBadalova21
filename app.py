@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 import jwt
 import logging
+import joblib
+import pandas as pd
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -28,6 +30,10 @@ CORS(app,
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 DATABASE = 'nailtime.db'
+
+# Load the model once at startup
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "ML", "nail_model.pkl")
+model = joblib.load(MODEL_PATH)
 
 def init_db():
     conn = sqlite3.connect(DATABASE)
@@ -230,6 +236,14 @@ def verify_token(current_user):
             'role': current_user['role']
         }
     }), 200
+
+@app.route('/api/predict-time', methods=['POST'])
+def predict_time():
+    data = request.json
+    features = ['length', 'colors', 'decorations', 'technique', 'service_type', 'complexity']
+    sample = pd.DataFrame([{f: data.get(f, 0) for f in features}])
+    predicted_time = model.predict(sample)[0]
+    return jsonify({'predicted_time': round(float(predicted_time), 2)})
 
 if __name__ == '__main__':
     app.run(debug=True) 
