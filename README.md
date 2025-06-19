@@ -2,6 +2,15 @@
 mini nail salon management system with intelligent functionality. Very original and super practical.
 
 ## How to run the project
+Install dependencies
+For backend (Flask + ML):
+Go to the root folder of the project and run:
+pip install -r ML/requirements.txt
+
+For frontend (React):
+Go to the PresentationLayer folder and run:
+npm install
+
 For backend (Flask + ML):
 Go to the main project folder and run:
 python app.py
