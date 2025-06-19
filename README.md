@@ -1,6 +1,16 @@
 ## 📋 Description
 mini nail salon management system with intelligent functionality. Very original and super practical.
 
+## How to run the project
+For backend (Flask + ML):
+Go to the main project folder and run:
+python app.py
+
+For frontend (React):
+Go to the PresentationLayer folder and run:
+npm run dev
+
+
 ## 🚀 Languages 
   <p align="left"> 
   <a href="https://python.com/"><img width=48 height=48 src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/800px-Python-logo-notext.svg.png" alt="Python"/></a>
