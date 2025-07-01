@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar, Clock, User, LogOut, CheckCircle, XCircle, Camera } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { auth } from '@/lib/auth';
 
 interface WorkerDashboardProps {
   user: { role: string; name: string };
@@ -22,17 +24,17 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
   ]);
 
   const fullSchedule = [
-    { date: '2024-03-20', slots: [
+    { date: '2025-06-20', slots: [
       { id: 1, time: '09:00', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'completed', actualTime: 90 },
       { id: 2, time: '11:00', client: 'Ива Стоянова', service: 'Гел лак', status: 'completed', actualTime: 75 },
       { id: 3, time: '14:00', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'in-progress', actualTime: null },
     ]},
-    { date: '2024-03-21', slots: [
+    { date: '2025-06-21', slots: [
       { id: 4, time: '10:00', client: 'Анна Петрова', service: 'Френски маникюр', status: 'scheduled', actualTime: null },
       { id: 5, time: '13:00', client: 'София Димитрова', service: 'Класически лак', status: 'scheduled', actualTime: null },
       { id: 6, time: '15:00', client: '', service: '', status: 'free', actualTime: null },
     ]},
-    { date: '2024-03-22', slots: [
+    { date: '2025-05-22', slots: [
       { id: 7, time: '09:30', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'scheduled', actualTime: null },
       { id: 8, time: '11:30', client: '', service: '', status: 'free', actualTime: null },
       { id: 9, time: '14:30', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'scheduled', actualTime: null },
@@ -48,6 +50,10 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
     { id: 6, time: '16:00', client: '', service: '', status: 'free', actualTime: null },
   ];
 
+  const [fullScheduleState, setFullScheduleState] = useState(fullSchedule);
+  const [todayScheduleState, setTodayScheduleState] = useState(todaySchedule);
+  const [actualTimeInputs, setActualTimeInputs] = useState<{ [key: string]: number }>({});
+
   const handleAccept = (requestId: number) => {
     setPendingRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
     alert(`✅ Заявката е приета!`);
@@ -58,8 +64,17 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
     alert(`❌ Заявката е отказана!`);
   };
 
-  const handleComplete = (appointmentId: number, actualTime: number) => {
-    alert(`✅ Услугата е завършена! Време: ${actualTime} минути`);
+  const handleComplete = (appointmentId: number, actualTime: number, isFullSchedule: boolean, dayIdx?: number, slotIdx?: number) => {
+    if (isFullSchedule && dayIdx !== undefined && slotIdx !== undefined) {
+      const updated = [...fullScheduleState];
+      updated[dayIdx].slots[slotIdx].actualTime = actualTime;
+      updated[dayIdx].slots[slotIdx].status = 'completed';
+      setFullScheduleState(updated);
+    } else {
+      const updated = todayScheduleState.map(slot => slot.id === appointmentId ? { ...slot, actualTime, status: 'completed' } : slot);
+      setTodayScheduleState(updated);
+    }
+    toast({ title: 'Времето е записано!' });
   };
 
   const getStatusColor = (status: string) => {
@@ -191,12 +206,12 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
               <CardContent className="p-6">
                 {showFullSchedule ? (
                   <div className="space-y-6">
-                    {fullSchedule.map((day) => (
+                    {fullScheduleState.map((day, dayIdx) => (
                       <div key={day.date} className="space-y-3">
                         <h3 className="font-semibold text-gray-800 mb-2">
                           {new Date(day.date).toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </h3>
-                        {day.slots.map((slot) => (
+                        {day.slots.map((slot, slotIdx) => (
                           <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -217,14 +232,16 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
                               
                               {slot.status === 'in-progress' && (
                                 <div className="flex items-center gap-2">
-                                  <Input 
-                                    type="number" 
-                                    placeholder="Време (мин)" 
+                                  <Input
+                                    type="number"
+                                    placeholder="Време (мин)"
                                     className="w-24 h-8 text-sm"
+                                    value={actualTimeInputs[slot.id] || ''}
+                                    onChange={e => setActualTimeInputs({ ...actualTimeInputs, [slot.id]: Number(e.target.value) })}
                                   />
-                                  <Button 
+                                  <Button
                                     size="sm"
-                                    onClick={() => handleComplete(slot.id, 85)}
+                                    onClick={() => handleComplete(slot.id, actualTimeInputs[slot.id], true, dayIdx, slotIdx)}
                                     className="bg-green-600 hover:bg-green-700 text-white h-8"
                                   >
                                     Завърши
@@ -245,7 +262,7 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {todaySchedule.map((slot) => (
+                    {todayScheduleState.map((slot, slotIdx) => (
                       <div key={slot.id} className={`p-4 rounded-lg border-2 ${getStatusColor(slot.status)}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -266,14 +283,16 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
                           
                           {slot.status === 'in-progress' && (
                             <div className="flex items-center gap-2">
-                              <Input 
-                                type="number" 
-                                placeholder="Време (мин)" 
+                              <Input
+                                type="number"
+                                placeholder="Време (мин)"
                                 className="w-24 h-8 text-sm"
+                                value={actualTimeInputs[slot.id] || ''}
+                                onChange={e => setActualTimeInputs({ ...actualTimeInputs, [slot.id]: Number(e.target.value) })}
                               />
-                              <Button 
+                              <Button
                                 size="sm"
-                                onClick={() => handleComplete(slot.id, 85)}
+                                onClick={() => handleComplete(slot.id, actualTimeInputs[slot.id], false, undefined, slotIdx)}
                                 className="bg-green-600 hover:bg-green-700 text-white h-8"
                               >
                                 Завърши
@@ -340,10 +359,87 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ user, onLogout }) => 
                 </div>
               </CardContent>
             </Card>
+
+            {/* Profile Update */}
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <User className="w-5 h-5 text-purple-600" />
+                  Профил
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProfileForm user={user} onUpdate={(updated) => { user.name = updated.name; toast({ title: 'Профилът е обновен!' }); }} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
     </div>
+  );
+};
+
+const ProfileForm: React.FC<{ user: { name: string; email?: string }; onUpdate: (u: { name: string; email: string }) => void }> = ({ user, onUpdate }) => {
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const updateData: any = {};
+      if (name !== user.name) updateData.name = name;
+      if (email && email !== user.email) updateData.email = email;
+      if (newPassword) updateData.password = newPassword;
+      if ((updateData.email || updateData.password) && !currentPassword) {
+        toast({ title: 'Моля въведете текущата парола за промяна на имейл или парола', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      if (updateData.email || updateData.password) updateData.current_password = currentPassword;
+      if (Object.keys(updateData).length === 0) {
+        toast({ title: 'Няма промени за обновяване', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      const res = await auth.updateUser(updateData);
+      onUpdate(res.user);
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err: any) {
+      toast({ title: 'Грешка', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label>Име</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} />
+      </div>
+      <div>
+        <Label>Имейл</Label>
+        <Input value={email} onChange={e => setEmail(e.target.value)} type="email" />
+      </div>
+      <div>
+        <Label>Нова парола</Label>
+        <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password" placeholder="Оставете празно за без промяна" />
+      </div>
+      {(email !== user.email || newPassword) && (
+        <div>
+          <Label>Текуща парола</Label>
+          <Input value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} type="password" required />
+        </div>
+      )}
+      <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+        {loading ? 'Обновяване...' : 'Обнови профила'}
+      </Button>
+    </form>
   );
 };
 

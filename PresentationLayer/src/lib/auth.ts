@@ -150,4 +150,29 @@ export const auth = {
     getToken() {
         return localStorage.getItem('token');
     },
+
+    async updateUser(updateData: { name?: string; email?: string; password?: string; current_password?: string }): Promise<AuthResponse> {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('No token found');
+        }
+        const response = await fetch(`${API_URL}/user/update`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            mode: 'cors',
+            body: JSON.stringify(updateData),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Update failed');
+        }
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+        }
+        return data;
+    },
 }; 

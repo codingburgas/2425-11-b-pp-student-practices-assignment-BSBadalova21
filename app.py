@@ -45,7 +45,8 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            confirmed INTEGER DEFAULT 0
         )
     ''')
     conn.commit()
@@ -74,6 +75,8 @@ def token_required(f):
     from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return '', 204
         token = request.headers.get('Authorization')
         if not token:
             return jsonify({'message': 'Token is missing'}), 401
@@ -181,29 +184,20 @@ def register():
 def login():
     if request.method == 'OPTIONS':
         return '', 204
-        
     try:
         data = request.get_json()
         if not data:
             return jsonify({'message': 'No data provided'}), 400
-        
-        # Validate required fields
         if not data.get('email') or not data.get('password'):
             return jsonify({'message': 'Missing email or password'}), 400
-        
         conn = get_db()
         cur = conn.cursor()
-        
-        # Find user
         cur.execute('SELECT * FROM users WHERE email = ?', (data['email'],))
         user = cur.fetchone()
-        
         if not user:
             return jsonify({'message': 'Invalid email or password'}), 401
-        
         if not check_password_hash(user['password_hash'], data['password']):
             return jsonify({'message': 'Invalid email or password'}), 401
-        
         # Generate token
         token = generate_token(user)
         return jsonify({
@@ -215,7 +209,6 @@ def login():
                 'role': user['role']
             }
         }), 200
-        
     except Exception as e:
         return jsonify({'message': f'Error during login: {str(e)}'}), 500
     finally:
@@ -244,6 +237,83 @@ def predict_time():
     sample = pd.DataFrame([{f: data.get(f, 0) for f in features}])
     predicted_time = model.predict(sample)[0]
     return jsonify({'predicted_time': round(float(predicted_time), 2)})
+
+@app.route('/api/user/update', methods=['PUT', 'OPTIONS'])
+@token_required
+def update_user(current_user):
+    if request.method == 'OPTIONS':
+        return '', 204
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'message': 'No data provided'}), 400
+
+    user_id = current_user['id']
+    new_name = data.get('name')
+    new_email = data.get('email')
+    new_password = data.get('password')
+    current_password = data.get('current_password')
+
+    if not (new_name or new_email or new_password):
+        return jsonify({'message': 'No update fields provided'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user = cur.fetchone()
+    if not user:
+        conn.close()
+        return jsonify({'message': 'User not found'}), 404
+
+    # If changing email or password, require current password
+    if (new_email or new_password):
+        if not current_password or not check_password_hash(user['password_hash'], current_password):
+            conn.close()
+            return jsonify({'message': 'Current password is incorrect'}), 401
+
+    updates = []
+    params = []
+    if new_name:
+        updates.append('name = ?')
+        params.append(new_name)
+    if new_email:
+        # Check if new email is already taken
+        cur.execute('SELECT * FROM users WHERE email = ? AND id != ?', (new_email, user_id))
+        if cur.fetchone():
+            conn.close()
+            return jsonify({'message': 'Email already in use'}), 409
+        updates.append('email = ?')
+        params.append(new_email)
+    if new_password:
+        password_hash = generate_password_hash(new_password)
+        updates.append('password_hash = ?')
+        params.append(password_hash)
+    params.append(user_id)
+
+    try:
+        if updates:
+            cur.execute(f'UPDATE users SET {", ".join(updates)} WHERE id = ?', params)
+            conn.commit()
+            # Get updated user
+            cur.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+            updated_user = cur.fetchone()
+            token = generate_token(updated_user)
+            return jsonify({
+                'message': 'User updated successfully',
+                'token': token,
+                'user': {
+                    'name': updated_user['name'],
+                    'email': updated_user['email'],
+                    'role': updated_user['role']
+                }
+            }), 200
+        else:
+            return jsonify({'message': 'No changes made'}), 400
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'message': f'Error updating user: {str(e)}'}), 500
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True) 

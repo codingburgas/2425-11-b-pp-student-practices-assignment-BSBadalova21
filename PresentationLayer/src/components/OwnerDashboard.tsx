@@ -18,6 +18,8 @@ import {
   Settings,
   X
 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { auth } from '@/lib/auth';
 
 interface OwnerDashboardProps {
   user: { role: string; name: string };
@@ -163,17 +165,17 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
 
   // Add fullSchedule and getStatusIcon
   const fullSchedule = [
-    { date: '2024-03-20', slots: [
+    { date: '2025-06-20', slots: [
       { id: 1, time: '09:00', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'completed', actualTime: 90 },
       { id: 2, time: '11:00', client: 'Ива Стоянова', service: 'Гел лак', status: 'completed', actualTime: 75 },
       { id: 3, time: '14:00', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'in-progress', actualTime: null },
     ]},
-    { date: '2024-03-21', slots: [
+    { date: '2025-06-21', slots: [
       { id: 4, time: '10:00', client: 'Анна Петрова', service: 'Френски маникюр', status: 'scheduled', actualTime: null },
       { id: 5, time: '13:00', client: 'София Димитрова', service: 'Класически лак', status: 'scheduled', actualTime: null },
       { id: 6, time: '15:00', client: '', service: '', status: 'free', actualTime: null },
     ]},
-    { date: '2024-03-22', slots: [
+    { date: '2025-05-22', slots: [
       { id: 7, time: '09:30', client: 'Мария Иванова', service: 'Гел лак с декорации', status: 'scheduled', actualTime: null },
       { id: 8, time: '11:30', client: '', service: '', status: 'free', actualTime: null },
       { id: 9, time: '14:30', client: 'Елена Георгиева', service: 'Маникюр + Педикюр', status: 'scheduled', actualTime: null },
@@ -317,8 +319,11 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
                         <Badge className={member.status === 'Активна' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-orange-100 text-orange-800 border-orange-200'}>
                           {member.status}
                         </Badge>
-                        <Button variant="ghost" size="sm">
-                          <Settings className="w-4 h-4" />
+                        <Button variant="destructive" size="sm" onClick={() => {
+                          setStaff(staff.filter(s => s.id !== member.id));
+                          toast({ title: 'Профилът е изтрит!' });
+                        }}>
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -330,6 +335,19 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
 
           {/* Sidebar with Calendar Button */}
           <div className="space-y-6">
+            {/* Profile Update */}
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Профил
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProfileForm user={user} onUpdate={(updated) => { user.name = updated.name; toast({ title: 'Профилът е обновен!' }); }} />
+              </CardContent>
+            </Card>
+
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-gray-800">
@@ -514,6 +532,70 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ user, onLogout }) => {
         </div>
       )}
     </div>
+  );
+};
+
+const ProfileForm: React.FC<{ user: { name: string; email?: string }; onUpdate: (u: { name: string; email: string }) => void }> = ({ user, onUpdate }) => {
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const updateData: any = {};
+      if (name !== user.name) updateData.name = name;
+      if (email && email !== user.email) updateData.email = email;
+      if (newPassword) updateData.password = newPassword;
+      if ((updateData.email || updateData.password) && !currentPassword) {
+        toast({ title: 'Моля въведете текущата парола за промяна на имейл или парола', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      if (updateData.email || updateData.password) updateData.current_password = currentPassword;
+      if (Object.keys(updateData).length === 0) {
+        toast({ title: 'Няма промени за обновяване', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      const res = await auth.updateUser(updateData);
+      onUpdate(res.user);
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err: any) {
+      toast({ title: 'Грешка', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label>Име</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} />
+      </div>
+      <div>
+        <Label>Имейл</Label>
+        <Input value={email} onChange={e => setEmail(e.target.value)} type="email" />
+      </div>
+      <div>
+        <Label>Нова парола</Label>
+        <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password" placeholder="Оставете празно за без промяна" />
+      </div>
+      {(email !== user.email || newPassword) && (
+        <div>
+          <Label>Текуща парола</Label>
+          <Input value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} type="password" required />
+        </div>
+      )}
+      <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-500 to-cyan-600 text-white">
+        {loading ? 'Обновяване...' : 'Обнови профила'}
+      </Button>
+    </form>
   );
 };
 

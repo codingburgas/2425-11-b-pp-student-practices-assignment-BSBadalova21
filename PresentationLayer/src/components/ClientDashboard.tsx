@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Calendar, Clock, Star, User, LogOut, Sparkles } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { auth } from '@/lib/auth';
 
 interface ClientDashboardProps {
   user: { role: string; name: string };
@@ -26,9 +27,9 @@ const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, onLogout }) => 
 
   const availableTimes = ['12:30', '14:00', '15:30', '16:00', '17:30'];
   const pastAppointments = [
-    { id: 1, date: '2024-05-20', service: 'Френски маникюр', time: '90 мин', rating: 5, status: 'завършен' },
-    { id: 2, date: '2024-05-05', service: 'Гел лак', time: '75 мин', rating: 4, status: 'завършен' },
-    { id: 3, date: '2024-04-22', service: 'Декорации', time: '120 мин', rating: 5, status: 'завършен' },
+    { id: 1, date: '2025-06-20', service: 'Френски маникюр', time: '90 мин', rating: 5, status: 'завършен' },
+    { id: 2, date: '2025-06-05', service: 'Гел лак', time: '75 мин', rating: 4, status: 'завършен' },
+    { id: 3, date: '2025-05-22', service: 'Декорации', time: '120 мин', rating: 5, status: 'завършен' },
   ];
 
   const handlePredict = () => {
@@ -232,6 +233,19 @@ const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, onLogout }) => 
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Profile Update */}
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <User className="w-5 h-5 text-pink-600" />
+                  Профил
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProfileForm user={user} onUpdate={(updated) => { user.name = updated.name; toast({ title: 'Профилът е обновен!' }); }} />
+              </CardContent>
+            </Card>
+
             {/* Upcoming Appointments */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
@@ -287,6 +301,70 @@ const ClientDashboard: React.FC<ClientDashboardProps> = ({ user, onLogout }) => 
         </div>
       </div>
     </div>
+  );
+};
+
+const ProfileForm: React.FC<{ user: { name: string; email?: string }; onUpdate: (u: { name: string; email: string }) => void }> = ({ user, onUpdate }) => {
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const updateData: any = {};
+      if (name !== user.name) updateData.name = name;
+      if (email && email !== user.email) updateData.email = email;
+      if (newPassword) updateData.password = newPassword;
+      if ((updateData.email || updateData.password) && !currentPassword) {
+        toast({ title: 'Моля въведете текущата парола за промяна на имейл или парола', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      if (updateData.email || updateData.password) updateData.current_password = currentPassword;
+      if (Object.keys(updateData).length === 0) {
+        toast({ title: 'Няма промени за обновяване', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      const res = await auth.updateUser(updateData);
+      onUpdate(res.user);
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err: any) {
+      toast({ title: 'Грешка', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label>Име</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} />
+      </div>
+      <div>
+        <Label>Имейл</Label>
+        <Input value={email} onChange={e => setEmail(e.target.value)} type="email" />
+      </div>
+      <div>
+        <Label>Нова парола</Label>
+        <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password" placeholder="Оставете празно за без промяна" />
+      </div>
+      {(email !== user.email || newPassword) && (
+        <div>
+          <Label>Текуща парола</Label>
+          <Input value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} type="password" required />
+        </div>
+      )}
+      <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+        {loading ? 'Обновяване...' : 'Обнови профила'}
+      </Button>
+    </form>
   );
 };
 
