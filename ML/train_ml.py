@@ -1,35 +1,67 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
+import matplotlib.pyplot as plt
+import random
 
-# Зареждане на данните
+# --- Custom Linear Regression ---
+class LinearRegressionCustom:
+    def __init__(self, lr=0.001, epochs=100):
+        self.w = [random.random() for _ in range(6)]  # 6 features
+        self.b = random.random()
+        self.lr = lr
+        self.epochs = epochs
+        self.losses = []
+
+    def predict(self, x):
+        return sum([self.w[i] * x[i] for i in range(6)]) + self.b
+
+    def fit(self, X, y):
+        n = len(X)
+        for epoch in range(self.epochs):
+            dw = [0.0 for _ in range(6)]
+            db = 0.0
+            for i in range(n):
+                y_pred = self.predict(X[i])
+                error = y_pred - y[i]
+                for j in range(6):
+                    dw[j] += error * X[i][j]
+                db += error
+            for j in range(6):
+                dw[j] = (2 / n) * dw[j]
+            db = (2 / n) * db
+            for j in range(6):
+                self.w[j] -= self.lr * dw[j]
+            self.b -= self.lr * db
+            if epoch % 10 == 0 or epoch == self.epochs - 1:
+                loss = self.loss(X, y)
+                self.losses.append(loss)
+                print(f"Epoch {epoch+1}/{self.epochs}, loss: {loss:.4f}")
+
+    def loss(self, X, y):
+        n = len(X)
+        total_loss = 0
+        for i in range(n):
+            y_pred = self.predict(X[i])
+            total_loss += (y_pred - y[i]) ** 2
+        return total_loss / n
+
+    def visualize(self, X, y):
+        # Визуализира само по първата характеристика (length)
+        plt.scatter([x[0] for x in X], y, label='Данни')
+        x_sorted = sorted(X, key=lambda x: x[0])
+        y_pred = [self.predict(x) for x in x_sorted]
+        plt.plot([x[0] for x in x_sorted], y_pred, color="red", label='Линеен модел')
+        plt.xlabel("length")
+        plt.ylabel("time")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+# --- Зареждане на данните ---
 df = pd.read_csv('nail_time.csv')
+X = df[["length", "colors", "decorations", "technique", "service_type", "complexity"]].values.tolist()
+y = df["time"].values.tolist()
 
-# Входни и изходни променливи
-X = df[["length", "colors", "decorations", "technique", "service_type", "complexity"]]
-y = df["time"]  # Забележи главна буква!
-
-# Разделяне на train/test
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Преобразуване и модел
-preprocessor = ColumnTransformer([
-    ("scale", StandardScaler(), ["length", "colors", "decorations", "technique", "service_type", "complexity"])
-])
-
-model = Pipeline([
-    ("preprocessing", preprocessor),
-    ("regressor", LinearRegression())
-])
-
-# Обучение
-model.fit(X_train, y_train)
-
-# Записване на модела
-import joblib
-joblib.dump(model, "nail_model.pkl")
-
-print("Моделът е обучен и запазен като nail_model.pkl") 
+# --- Обучение с custom LinearRegression ---
+custom_model = LinearRegressionCustom(lr=0.0001, epochs=100)
+custom_model.fit(X, y)
+custom_model.visualize(X, y) 
