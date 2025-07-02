@@ -3,6 +3,7 @@ import jwt
 from flask import current_app, request, jsonify
 from datetime import datetime, timedelta
 from functools import wraps
+import os
 
 DATABASE = 'nailtime.db'
 
